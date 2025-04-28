@@ -52,6 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akhilraghav.hourlymins.HourlyMinsApp
 import com.akhilraghav.hourlymins.data.repository.DiaryRepository
 import com.akhilraghav.hourlymins.data.entities.DiaryEntry
+import com.akhilraghav.hourlymins.ui.components.CalendarView
 import com.akhilraghav.hourlymins.viewmodel.DiaryViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -85,33 +86,23 @@ fun DiaryScreen() {
         topBar = {
             TopAppBar(
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Diary")
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text(
-                            text = dateFormat.format(selectedDate),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        IconButton(onClick = { showDatePicker = true }) {
-                            Icon(
-                                imageVector = Icons.Default.CalendarMonth,
-                                contentDescription = "Select Date"
-                            )
-                        }
-                    }
+                    Text("Diary")
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
+                onClick = { 
                     editingEntry = null
                     showEntrySheet = true
-                }
+                },
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Entry")
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Entry",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
     ) { paddingValues ->
@@ -121,6 +112,13 @@ fun DiaryScreen() {
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
+            CalendarView(
+                selectedDate = selectedDate,
+                onDateSelected = { date ->
+                    viewModel.setSelectedDate(date)
+                }
+            )
+            
             if (entries.isEmpty()) {
                 Box(
                     modifier = Modifier

@@ -62,9 +62,11 @@ class HourlyCheckInWorker(
         val previousHourEnd = calendar.time
         
         // Check if we have an entry for the previous hour
-        val entries = diaryEntryDao.getEntriesBetweenDates(previousHourStart, previousHourEnd).firstOrNull()
+        val entries = diaryEntryDao.getEntriesBetweenDates(previousHourStart, previousHourEnd)
+        val entriesList = mutableListOf<DiaryEntry>()
+        entries.collect { entriesList.addAll(it) }
         
-        if (entries.isNullOrEmpty()) {
+        if (entriesList.isEmpty()) {
             // No entry for previous hour, create a "missed" entry
             val missedEntry = DiaryEntry(
                 timestamp = previousHourStart,

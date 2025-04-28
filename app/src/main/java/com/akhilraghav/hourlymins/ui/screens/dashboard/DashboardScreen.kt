@@ -205,10 +205,67 @@ fun DashboardScreen() {
                         horizontalArrangement = Arrangement.SpaceAround,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        ProductivityPieChart(
-                            productiveHours = productiveHours,
-                            wastedHours = wastedHours
-                        )
+                        // Productivity pie chart implementation
+                        Box(
+                            modifier = Modifier.size(120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Capture the surface color outside the Canvas scope
+                            val surfaceColor = MaterialTheme.colorScheme.surface
+                            
+                            Canvas(modifier = Modifier.size(120.dp)) {
+                                val canvasSize = size.minDimension
+                                val radius = canvasSize / 2
+                                val center = Offset(size.width / 2, size.height / 2)
+                                val total = productiveHours + wastedHours
+                                
+                                if (total > 0) {
+                                    // Draw productive hours (green)
+                                    val productiveSweepAngle = 360f * (productiveHours.toFloat() / total)
+                                    drawArc(
+                                        color = Color(0xFF4CAF50),
+                                        startAngle = 0f,
+                                        sweepAngle = productiveSweepAngle,
+                                        useCenter = true,
+                                        topLeft = Offset(center.x - radius, center.y - radius),
+                                        size = Size(canvasSize, canvasSize)
+                                    )
+                                    
+                                    // Draw wasted hours (red)
+                                    drawArc(
+                                        color = Color(0xFFF44336),
+                                        startAngle = productiveSweepAngle,
+                                        sweepAngle = 360f - productiveSweepAngle,
+                                        useCenter = true,
+                                        topLeft = Offset(center.x - radius, center.y - radius),
+                                        size = Size(canvasSize, canvasSize)
+                                    )
+                                } else {
+                                    // Draw empty circle if no data
+                                    drawCircle(
+                                        color = Color.LightGray,
+                                        radius = radius,
+                                        center = center,
+                                        style = Stroke(width = 4f)
+                                    )
+                                }
+                                
+                                // Draw a white circle in the middle for a donut chart effect
+                                val innerRadius = radius * 0.6f
+                                drawCircle(
+                                    color = surfaceColor,
+                                    radius = innerRadius,
+                                    center = center
+                                )
+                            }
+                            
+                            // Add text in the middle
+                            Text(
+                                text = "$productiveHours/${productiveHours + wastedHours}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                         
                         Column(
                             horizontalAlignment = Alignment.Start
@@ -291,7 +348,88 @@ fun DashboardScreen() {
                             modifier = Modifier.fillMaxWidth()
                         )
                     } else {
-                        WeeklyBarChart(records = weeklyStats)
+                        // Weekly bar chart implementation
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .padding(8.dp)
+                        ) {
+                            val calendar = Calendar.getInstance()
+                            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1 // 0 = Sunday, 6 = Saturday
+                            val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+                            
+                            // Group records by day of week
+                            val recordsByDay = weeklyStats.groupBy { record ->
+                                calendar.time = record.date
+                                calendar.get(Calendar.DAY_OF_WEEK) - 1
+                            }
+                            
+                            // Find max productive hours for scaling
+                            val maxHours = weeklyStats.maxOfOrNull { it.productiveHours } ?: 0
+                            val scale = if (maxHours > 0) 1f / maxHours else 0f
+                            
+                            // Chart
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                for (day in 0..6) {
+                                    val dayRecords = recordsByDay[day] ?: emptyList()
+                                    val productiveHours = dayRecords.sumOf { it.productiveHours }
+                                    val wastedHours = dayRecords.sumOf { it.wastedHours }
+                                    
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        // Productive hours bar
+                                        if (productiveHours > 0) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(width = 24.dp, height = 0.dp)
+                                                    .weight(scale * productiveHours)
+                                                    .background(
+                                                        color = Color(0xFF4CAF50),
+                                                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                                                    )
+                                            )
+                                        }
+                                        
+                                        // Wasted hours bar
+                                        if (wastedHours > 0) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(width = 24.dp, height = 0.dp)
+                                                    .weight(scale * wastedHours)
+                                                    .background(
+                                                        color = Color(0xFFF44336),
+                                                        shape = if (productiveHours == 0) {
+                                                            RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                                                        } else {
+                                                            RoundedCornerShape(0.dp)
+                                                        }
+                                                    )
+                                            )
+                                        }
+                                        
+                                        // Empty space if no data
+                                        if (productiveHours == 0 && wastedHours == 0) {
+                                            Spacer(modifier = Modifier.weight(0.1f))
+                                        }
+                                        
+                                        // Day label
+                                        Text(
+                                            text = daysOfWeek[day],
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (day == dayOfWeek) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
@@ -539,172 +677,5 @@ fun DashboardScreen() {
             }
         }
     }
-}
 
-@Composable
-fun ProductivityPieChart(
-    productiveHours: Int,
-    wastedHours: Int,
-    modifier: Modifier = Modifier
-) {
-    val total = productiveHours + wastedHours
-    
-    if (total == 0) {
-        Box(
-            modifier = modifier
-                .size(120.dp)
-                .clip(RoundedCornerShape(percent = 50))
-                .background(Color.LightGray),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "No Data",
-                color = Color.White,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-        return
-    }
-    
-    val productiveAngle = 360f * (productiveHours.toFloat() / total.toFloat())
-    
-    Canvas(
-        modifier = modifier.size(120.dp)
-    ) {
-        val canvasSize = size.minDimension
-        val radius = canvasSize / 2
-        val center = Offset(size.width / 2, size.height / 2)
-        
-        // Draw productive hours slice
-        drawArc(
-            color = Color(0xFF4CAF50), // Green
-            startAngle = 0f,
-            sweepAngle = productiveAngle,
-            useCenter = true,
-            topLeft = Offset(center.x - radius, center.y - radius),
-            size = Size(canvasSize, canvasSize)
-        )
-        
-        // Draw wasted hours slice
-        drawArc(
-            color = Color(0xFFF44336), // Red
-            startAngle = productiveAngle,
-            sweepAngle = 360f - productiveAngle,
-            useCenter = true,
-            topLeft = Offset(center.x - radius, center.y - radius),
-            size = Size(canvasSize, canvasSize)
-        )
-        
-        // Draw a white circle in the middle for a donut chart effect
-        val innerRadius = radius * 0.6f
-        drawCircle(
-            color = MaterialTheme.colorScheme.surface,
-            radius = innerRadius,
-            center = center
-        )
-        
-        // Draw text in the middle
-        drawContext.canvas.nativeCanvas.apply {
-            val text = "$productiveHours/$total"
-            val textPaint = android.graphics.Paint().apply {
-                color = android.graphics.Color.BLACK
-                textSize = 14.sp.toPx()
-                textAlign = android.graphics.Paint.Align.CENTER
-            }
-            drawText(
-                text,
-                center.x,
-                center.y + textPaint.textSize / 3,
-                textPaint
-            )
-        }
-    }
-}
-
-@Composable
-fun WeeklyBarChart(
-    records: List<ProductivityRecord>,
-    modifier: Modifier = Modifier
-) {
-    val calendar = Calendar.getInstance()
-    val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1 // 0 = Sunday, 6 = Saturday
-    val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-    
-    // Group records by day of week
-    val recordsByDay = records.groupBy { record ->
-        calendar.time = record.date
-        calendar.get(Calendar.DAY_OF_WEEK) - 1
-    }
-    
-    // Find max productive hours for scaling
-    val maxHours = records.maxOfOrNull { it.productiveHours } ?: 0
-    val scale = if (maxHours > 0) 1f / maxHours else 0f
-    
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(200.dp)
-            .padding(8.dp)
-    ) {
-        // Chart
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            for (day in 0..6) {
-                val dayRecords = recordsByDay[day] ?: emptyList()
-                val productiveHours = dayRecords.sumOf { it.productiveHours }
-                val wastedHours = dayRecords.sumOf { it.wastedHours }
-                
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Productive hours bar
-                    if (productiveHours > 0) {
-                        Box(
-                            modifier = Modifier
-                                .width(24.dp)
-                                .weight(scale * productiveHours)
-                                .background(
-                                    color = Color(0xFF4CAF50),
-                                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
-                                )
-                        )
-                    }
-                    
-                    // Wasted hours bar
-                    if (wastedHours > 0) {
-                        Box(
-                            modifier = Modifier
-                                .width(24.dp)
-                                .weight(scale * wastedHours)
-                                .background(
-                                    color = Color(0xFFF44336),
-                                    shape = if (productiveHours == 0) {
-                                        RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
-                                    } else {
-                                        RoundedCornerShape(0.dp)
-                                    }
-                                )
-                        )
-                    }
-                    
-                    // Empty space if no data
-                    if (productiveHours == 0 && wastedHours == 0) {
-                        Spacer(modifier = Modifier.weight(0.1f))
-                    }
-                    
-                    // Day label
-                    Text(
-                        text = daysOfWeek[day],
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (day == dayOfWeek) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-    }
 }

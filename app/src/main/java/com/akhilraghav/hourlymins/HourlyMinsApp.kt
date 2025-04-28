@@ -14,14 +14,20 @@ class HourlyMinsApp : Application(), Configuration.Provider {
     
     val database by lazy { AppDatabase.getDatabase(this) }
     
+    // Define WorkManager configuration
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setMinimumLoggingLevel(android.util.Log.INFO)
+            .build()
+    
     override fun onCreate() {
         super.onCreate()
         
         // Create notification channels
         createNotificationChannels()
         
-        // Initialize WorkManager
-        WorkManager.getInstance(this)
+        // WorkManager will automatically use our configuration
+        // since we implement Configuration.Provider
     }
     
     private fun createNotificationChannels() {
@@ -61,9 +67,6 @@ class HourlyMinsApp : Application(), Configuration.Provider {
         }
     }
     
-    override fun getWorkManagerConfiguration(): Configuration {
-        return Configuration.Builder()
-            .setMinimumLoggingLevel(android.util.Log.INFO)
-            .build()
-    }
+    // No need for getWorkManagerConfiguration() method anymore
+    // since we're directly overriding the workManagerConfiguration property
 }
